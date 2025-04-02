@@ -1,16 +1,10 @@
 FROM python:3.12-slim
 
-RUN groupadd --gid 5000 user && useradd --home-dir /home/user --create-home --uid 5000 --gid 5000 --shell /bin/sh --skel /dev/null user
-USER user
+WORKDIR /code
 
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
+COPY requirements.txt /code/requirements.txt
+RUN pip install -r /code/requirements.txt --upgrade --no-cache-dir
 
-WORKDIR /app
+COPY *.py /code/
 
-COPY requirements.txt ./
-RUN pip install -r requirements.txt --no-cache-dir
-
-COPY *.py ./
-
-ENTRYPOINT ["fastapi", "run", "/app/main.py", "--port", "8000"]
+ENTRYPOINT ["fastapi", "run", "main.py", "--port", "8000"]
