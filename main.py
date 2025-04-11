@@ -1,8 +1,9 @@
 import subprocess
+import yaml  # Vulnerable PyYAML import!
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from schemas import Spell
+from schemas import Spell, YAMLSpellbook
 from database import db
 from models import spell_helper
 
@@ -44,3 +45,24 @@ async def execute_command(command: str | None = None):
     stderr = process.stderr.read().decode()
 
     return {"stdout": stdout, "stderr": stderr}
+
+
+@app.post("/api/import_spellbook")
+async def import_spellbook(spellbook: YAMLSpellbook):
+    try:
+        # Use yaml.load (vulnerable to arbitrary code execution)
+        spells_data = yaml.load(spellbook.yaml_content, Loader=yaml.Loader)
+        
+        if not isinstance(spells_data, dict) or "spells" not in spells_data:
+            raise ValueError("Invalid YAML format. Expected a 'spells' key.")
+
+        imported_spells = []
+        for spell_dict in spells_data["spells"]:
+            result = await db.spells.insert_one(spell_dict)
+            saved_spell = await db.spells.find_one({"_id": result.inserted_id})
+            imported_spells.append(spell_helper(saved_spell))
+            
+        return {"imported_spells": imported_spells}
+        
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
